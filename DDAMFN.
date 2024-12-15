@@ -1,0 +1,472 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "gpuType": "T4",
+      "authorship_tag": "ABX9TyN3fAlvMiC98R8BWP9m9j8P",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    },
+    "accelerator": "GPU"
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/imdiora/FACIAL_EXPRESSION_RECOGNITION/blob/main/DDAMFN.\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 2,
+      "metadata": {
+        "id": "J5-a23_ixVlX"
+      },
+      "outputs": [],
+      "source": [
+        "!mkdir checkpoints"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!mkdir DDAMFN++"
+      ],
+      "metadata": {
+        "id": "TlXjsVPS0PCE"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!mkdir -p DDAMFN++/checkpoints_ver2.0\n",
+        "!mkdir -p DDAMFN++/networks\n",
+        "!mkdir -p DDAMFN++/networks/_pycache_\n",
+        "!mkdir -p DDAMFN++/pretrained\n",
+        "!mkdir -p DDAMFN++/Retinaface_alignment_ver2.0/data\n",
+        "!mkdir -p DDAMFN++/Retinaface_alignment_ver2.0/layers\n",
+        "!mkdir -p DDAMFN++/Retinaface_alignment_ver2.0/models\n",
+        "!mkdir -p DDAMFN++/Retinaface_alignment_ver2.0/utils\n",
+        "!mkdir -p DDAMFN++/Retinaface_alignment_ver2.0/weights"
+      ],
+      "metadata": {
+        "id": "TlZYuNW-0Zcd"
+      },
+      "execution_count": 3,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [],
+      "metadata": {
+        "id": "73HjgzScNw4I"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!cd DDAMFN++\n",
+        "!python rafdb_train_updated.py|"
+      ],
+      "metadata": {
+        "id": "6yZKaBsmNYww",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "8c7541bd-2c5c-45c2-acb6-baf7b6ad5249"
+      },
+      "execution_count": 6,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "/bin/bash: -c: line 2: syntax error: unexpected end of file\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!cd DDAMFN++\n",
+        "!python rafdb_train_updated.py\n"
+      ],
+      "metadata": {
+        "id": "lbjPkTvVKMjD",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "8c705564-d8b7-44fc-e596-680c8005001f"
+      },
+      "execution_count": 9,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Traceback (most recent call last):\n",
+            "  File \"/content/rafdb_train_updated.py\", line 16, in <module>\n",
+            "    from networks.DDAM import DDAMNet\n",
+            "ModuleNotFoundError: No module named 'networks'\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import os\n",
+        "import sys\n",
+        "sys.path.append('/content/DDAMFN++/networks')\n",
+        "from tqdm import tqdm\n",
+        "import argparse\n",
+        "import numpy as np\n",
+        "\n",
+        "import torch\n",
+        "import torch.nn as nn\n",
+        "import torch.utils.data as data\n",
+        "from torchvision import transforms, datasets\n",
+        "\n",
+        "from sklearn.metrics import balanced_accuracy_score\n",
+        "import matplotlib.pyplot as plt\n",
+        "import itertools\n",
+        "import torch.nn.functional as F\n",
+        "from DDAM import DDAMNet\n",
+        "\n",
+        "from sklearn.metrics import confusion_matrix\n",
+        "\n",
+        "eps = sys.float_info.epsilon\n",
+        "\n",
+        "\n",
+        "def parse_args():\n",
+        "    parser = argparse.ArgumentParser()\n",
+        "    parser.add_argument('--raf_path', type=str, default='data/RAFDB', help='Raf-DB dataset path.')\n",
+        "    parser.add_argument('--batch_size', type=int, default=256, help='Batch size.')\n",
+        "    parser.add_argument('--lr', type=float, default=0.003, help='Initial learning rate for sgd.')\n",
+        "    parser.add_argument('--workers', default=4, type=int, help='Number of data loading workers.')\n",
+        "    parser.add_argument('--epochs', type=int, default=40, help='Total training epochs.')\n",
+        "    parser.add_argument('--num_head', type=int, default=3, help='Number of attention head.')\n",
+        "    return parser.parse_args()\n",
+        "\n",
+        "\n",
+        "class AttentionLoss(nn.Module):\n",
+        "    def __init__(self):\n",
+        "        super(AttentionLoss, self).__init__()\n",
+        "\n",
+        "    def forward(self, x):\n",
+        "        num_head = len(x)\n",
+        "        loss = 0\n",
+        "        cnt = 0\n",
+        "        if num_head > 1:\n",
+        "            for i in range(num_head - 1):\n",
+        "                for j in range(i + 1, num_head):\n",
+        "                    mse = F.mse_loss(x[i], x[j])\n",
+        "                    cnt = cnt + 1\n",
+        "                    loss = loss + mse\n",
+        "            loss = cnt / (loss + eps)\n",
+        "        else:\n",
+        "            loss = 0\n",
+        "        return loss\n",
+        "\n",
+        "\n",
+        "def plot_confusion_matrix(cm, classes,\n",
+        "                          normalize=False,\n",
+        "                          title='Confusion matrix',\n",
+        "                          cmap=plt.cm.Blues):\n",
+        "    if normalize:\n",
+        "        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]\n",
+        "        print(\"Normalized confusion matrix\")\n",
+        "    else:\n",
+        "        print('Confusion matrix, without normalization')\n",
+        "\n",
+        "    print(cm)\n",
+        "\n",
+        "    plt.imshow(cm, interpolation='nearest', cmap=cmap)\n",
+        "    plt.title(title, fontsize=16)\n",
+        "    plt.colorbar()\n",
+        "    tick_marks = np.arange(len(classes))\n",
+        "    plt.xticks(tick_marks, classes, rotation=45)\n",
+        "    plt.yticks(tick_marks, classes)\n",
+        "\n",
+        "    fmt = '.2f' if normalize else 'd'\n",
+        "\n",
+        "    thresh = cm.max() / 2.\n",
+        "    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):\n",
+        "        plt.text(j, i, format(cm[i, j] * 100, fmt) + '%',\n",
+        "                 horizontalalignment=\"center\",\n",
+        "                 color=\"white\" if cm[i, j] > thresh else \"black\")\n",
+        "\n",
+        "    plt.ylabel('Actual', fontsize=18)\n",
+        "    plt.xlabel('Predicted', fontsize=18)\n",
+        "    plt.tight_layout()\n",
+        "\n",
+        "\n",
+        "class_names = ['Neutral', 'Happy', 'Sad', 'Surprise', 'Fear', 'Disgust', 'Angry']\n",
+        "\n",
+        "\n",
+        "def run_training():\n",
+        "    args = parse_args()\n",
+        "    device = torch.device(\"cuda:0\" if torch.cuda.is_available() else \"cpu\")\n",
+        "\n",
+        "    if torch.cuda.is_available():\n",
+        "        torch.backends.cudnn.benchmark = True\n",
+        "        torch.backends.cudnn.deterministic = True\n",
+        "        torch.backends.cudnn.enabled = True\n",
+        "\n",
+        "    model = DDAMNet(num_class=7, num_head=args.num_head)\n",
+        "\n",
+        "    # Use DataParallel to enable multi-GPU training\n",
+        "    if torch.cuda.device_count() > 1:\n",
+        "        print(f\"Using {torch.cuda.device_count()} GPUs for training.\")\n",
+        "        model = nn.DataParallel(model)\n",
+        "\n",
+        "    model.to(device)\n",
+        "\n",
+        "    data_transforms = transforms.Compose([\n",
+        "        transforms.Resize((112, 112)),\n",
+        "        transforms.RandomHorizontalFlip(),\n",
+        "        transforms.RandomApply([\n",
+        "            transforms.RandomRotation(5),\n",
+        "            transforms.RandomCrop(112, padding=8)\n",
+        "        ], p=0.2),\n",
+        "        transforms.ToTensor(),\n",
+        "        transforms.Normalize(mean=[0.485, 0.456, 0.406],\n",
+        "                             std=[0.229, 0.224, 0.225]),\n",
+        "        transforms.RandomErasing(scale=(0.02, 0.25)),\n",
+        "    ])\n",
+        "\n",
+        "    train_dataset = datasets.ImageFolder(f'{args.raf_path}/train', transform=data_transforms)\n",
+        "\n",
+        "    print('Whole train set size:', train_dataset.__len__())\n",
+        "\n",
+        "    train_loader = torch.utils.data.DataLoader(train_dataset,\n",
+        "                                               batch_size=args.batch_size,\n",
+        "                                               num_workers=args.workers,\n",
+        "                                               shuffle=True,\n",
+        "                                               pin_memory=True)\n",
+        "\n",
+        "    data_transforms_val = transforms.Compose([\n",
+        "        transforms.Resize((112, 112)),\n",
+        "        transforms.ToTensor(),\n",
+        "        transforms.Normalize(mean=[0.485, 0.456, 0.406],\n",
+        "                             std=[0.229, 0.224, 0.225])])\n",
+        "\n",
+        "    val_dataset = datasets.ImageFolder(f'{args.raf_path}/val', transform=data_transforms_val)\n",
+        "\n",
+        "    print('Validation set size:', val_dataset.__len__())\n",
+        "\n",
+        "    val_loader = torch.utils.data.DataLoader(val_dataset,\n",
+        "                                             batch_size=args.batch_size,\n",
+        "                                             num_workers=args.workers,\n",
+        "                                             shuffle=False,\n",
+        "                                             pin_memory=True)\n",
+        "\n",
+        "    criterion_cls = torch.nn.CrossEntropyLoss()\n",
+        "\n",
+        "    criterion_at = AttentionLoss()\n",
+        "\n",
+        "    params = list(model.parameters())\n",
+        "    optimizer = torch.optim.SGD(params, lr=args.lr, weight_decay=1e-4, momentum=0.9)\n",
+        "    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)\n",
+        "\n",
+        "    best_acc = 0\n",
+        "    for epoch in tqdm(range(1, args.epochs + 1)):\n",
+        "        running_loss = 0.0\n",
+        "        correct_sum = 0\n",
+        "        iter_cnt = 0\n",
+        "        model.train()\n",
+        "\n",
+        "        for (imgs, targets) in train_loader:\n",
+        "            iter_cnt += 1\n",
+        "            optimizer.zero_grad()\n",
+        "\n",
+        "            imgs = imgs.to(device)\n",
+        "            targets = targets.to(device)\n",
+        "\n",
+        "            out, feat, heads = model(imgs)\n",
+        "\n",
+        "            loss = criterion_cls(out, targets) + 0.1 * criterion_at(heads)\n",
+        "\n",
+        "            loss.backward()\n",
+        "            optimizer.step()\n",
+        "\n",
+        "            running_loss += loss\n",
+        "            _, predicts = torch.max(out, 1)\n",
+        "            correct_num = torch.eq(predicts, targets).sum()\n",
+        "            correct_sum += correct_num\n",
+        "\n",
+        "        acc = correct_sum.float() / float(train_dataset.__len__())\n",
+        "        running_loss = running_loss / iter_cnt\n",
+        "        tqdm.write('[Epoch %d] Training accuracy: %.4f. Loss: %.4f. LR %.6f' % (\n",
+        "        epoch, acc, running_loss, optimizer.param_groups[0]['lr']))\n",
+        "\n",
+        "        with torch.no_grad():\n",
+        "            running_loss = 0.0\n",
+        "            iter_cnt = 0\n",
+        "            bingo_cnt = 0\n",
+        "            sample_cnt = 0\n",
+        "\n",
+        "            ## for calculating balanced accuracy\n",
+        "            y_true = []\n",
+        "            y_pred = []\n",
+        "\n",
+        "            model.eval()\n",
+        "            for (imgs, targets) in val_loader:\n",
+        "                imgs = imgs.to(device)\n",
+        "                targets = targets.to(device)\n",
+        "\n",
+        "                out, feat, heads = model(imgs)\n",
+        "                loss = criterion_cls(out, targets) + 0.1 * criterion_at(heads)\n",
+        "\n",
+        "                running_loss += loss\n",
+        "\n",
+        "                _, predicts = torch.max(out, 1)\n",
+        "                correct_num = torch.eq(predicts, targets)\n",
+        "                bingo_cnt += correct_num.sum().cpu()\n",
+        "                sample_cnt += out.size(0)\n",
+        "\n",
+        "                y_true.append(targets.cpu().numpy())\n",
+        "                y_pred.append(predicts.cpu().numpy())\n",
+        "\n",
+        "                if iter_cnt == 0:\n",
+        "                    all_predicted = predicts\n",
+        "                    all_targets = targets\n",
+        "                else:\n",
+        "                    all_predicted = torch.cat((all_predicted, predicts), 0)\n",
+        "                    all_targets = torch.cat((all_targets, targets), 0)\n",
+        "                iter_cnt += 1\n",
+        "            running_loss = running_loss / iter_cnt\n",
+        "            scheduler.step()\n",
+        "\n",
+        "            acc = bingo_cnt.float() / float(sample_cnt)\n",
+        "            acc = np.around(acc.numpy(), 4)\n",
+        "            best_acc = max(acc, best_acc)\n",
+        "\n",
+        "            y_true = np.concatenate(y_true)\n",
+        "            y_pred = np.concatenate(y_pred)\n",
+        "            balanced_acc = np.around(balanced_accuracy_score(y_true, y_pred), 4)\n",
+        "\n",
+        "            tqdm.write(\"[Epoch %d] Validation accuracy: %.4f. bacc: %.4f. Loss: %.4f\" % (\n",
+        "            epoch, acc, balanced_acc, running_loss))\n",
+        "            tqdm.write(\"best_acc:\" + str(best_acc))\n",
+        "\n",
+        "            if acc > 0.90 and acc == best_acc:\n",
+        "                torch.save({'iter': epoch,\n",
+        "                            'model_state_dict': model.state_dict(),\n",
+        "                            'optimizer_state_dict': optimizer.state_dict()},\n",
+        "                           os.path.join('checkpoints', \"rafdb_epoch\" + str(epoch) + \"_acc\" + str(acc) + \"_bacc\" + str(\n",
+        "                               balanced_acc) + \".pth\"))\n",
+        "                tqdm.write('Model saved.')\n",
+        "\n",
+        "                # Compute confusion matrix\n",
+        "                matrix = confusion_matrix(all_targets.data.cpu().numpy(), all_predicted.cpu().numpy())\n",
+        "                np.set_printoptions(precision=2)\n",
+        "                plt.figure(figsize=(10, 8))\n",
+        "                # Plot normalized confusion matrix\n",
+        "                plot_confusion_matrix(matrix, classes=class_names, normalize=True, title='RAF-DB Confusion Matrix (acc: %0.2f%%)' % (acc * 100))\n",
+        "\n",
+        "                plt.savefig(os.path.join('checkpoints', \"rafdb_epoch\" + str(epoch) + \"_acc\" + str(acc) + \"_bacc\" + str(balanced_acc) + \".png\"))\n",
+        "                plt.close()\n",
+        "\n",
+        "\n",
+        "if __name__ == \"__main__\":\n",
+        "    run_training()\n"
+      ],
+      "metadata": {
+        "id": "fRqRhQT900If",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 505
+        },
+        "outputId": "95c8405a-a334-48ae-cfe9-092e418ab500"
+      },
+      "execution_count": 25,
+      "outputs": [
+        {
+          "output_type": "error",
+          "ename": "ModuleNotFoundError",
+          "evalue": "No module named 'networkss'",
+          "traceback": [
+            "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+            "\u001b[0;31mModuleNotFoundError\u001b[0m                       Traceback (most recent call last)",
+            "\u001b[0;32m<ipython-input-25-478685619595>\u001b[0m in \u001b[0;36m<cell line: 17>\u001b[0;34m()\u001b[0m\n\u001b[1;32m     15\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mitertools\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     16\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mtorch\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mnn\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfunctional\u001b[0m \u001b[0;32mas\u001b[0m \u001b[0mF\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 17\u001b[0;31m \u001b[0;32mfrom\u001b[0m \u001b[0mDDAM\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mDDAMNet\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     18\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     19\u001b[0m \u001b[0;32mfrom\u001b[0m \u001b[0msklearn\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mmetrics\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mconfusion_matrix\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/content/DDAMFN++/networks/DDAM.py\u001b[0m in \u001b[0;36m<module>\u001b[0;34m\u001b[0m\n\u001b[1;32m      2\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mtorch\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      3\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0msys\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m----> 4\u001b[0;31m \u001b[0;32mfrom\u001b[0m \u001b[0mnetworkss\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mMixedFeatureNet\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m      5\u001b[0m \u001b[0;32mfrom\u001b[0m \u001b[0mtorch\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mnn\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mModule\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      6\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mos\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;31mModuleNotFoundError\u001b[0m: No module named 'networkss'",
+            "",
+            "\u001b[0;31m---------------------------------------------------------------------------\u001b[0;32m\nNOTE: If your import is failing due to a missing package, you can\nmanually install dependencies using either !pip or !apt.\n\nTo view examples of installing some common dependencies, click the\n\"Open Examples\" button below.\n\u001b[0;31m---------------------------------------------------------------------------\u001b[0m\n"
+          ],
+          "errorDetails": {
+            "actions": [
+              {
+                "action": "open_url",
+                "actionText": "Open Examples",
+                "url": "/notebooks/snippets/importing_libraries.ipynb"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!python rafdb_train_updated.py"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "hTeIUsRLUIZc",
+        "outputId": "5d460521-de17-473b-a057-6db1d5a16830"
+      },
+      "execution_count": 21,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Traceback (most recent call last):\n",
+            "  File \"/content/rafdb_train_updated.py\", line 17, in <module>\n",
+            "    from DDAM import DDAMNet\n",
+            "ModuleNotFoundError: No module named 'DDAM'\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!mv DDAMFN++/networkss DDAMFN++/networks"
+      ],
+      "metadata": {
+        "id": "WEFvJM4NVChI"
+      },
+      "execution_count": 19,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [],
+      "metadata": {
+        "id": "dbEKdMuMWfJ0"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
