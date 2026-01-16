@@ -27,7 +27,7 @@ Datasets and pretrained models are hosted externally.
 ![DDAMFN Demo](demo.gif)
 
 ### Sample output
-![DDAMFN Output](demo.png)
+<img src="demo.png" width="400" />
 
 
 ## 🧠 Model Architecture
