@@ -169,3 +169,5 @@ Computer Engineering | AI Automation & Computer Vision
 
 GitHub: [https://github.com/imdiora](https://github.com/imdiora)
 Hugging Face: [https://huggingface.co/imdiora/ddamfn-facial-expression-recognition](https://huggingface.co/imdiora/ddamfn-facial-expression-recognition)
+
+Thanks to [Jamshid Ganiev](https://github.com/Jamshid-Ganiev) for major help with backend logic and debugging.
