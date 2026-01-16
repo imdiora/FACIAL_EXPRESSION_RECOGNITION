@@ -118,4 +118,4 @@ GitHub: [https://github.com/imdiora](https://github.com/imdiora)
 Hugging Face: [https://huggingface.co/imdiora](https://huggingface.co/imdiora)
 
 **Acknowledgement:**
-Thanks to **Jamshid Ganiev** for major support with backend logic and debugging.
+Thanks to [Jamshid Ganiev](https://github.com/Jamshid-Ganiev) for major support with backend logic and debugging.
