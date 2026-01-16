@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv/
+myenv/
+
+# IDE
+.vs/
+.idea/
+
+# Data
+data/
+rafdb/
+affectnet/
+
+# Models / checkpoints
+checkpoints/
+pretrained/
+output/
+models/*.pth
+models/*.pt
+models/*.onnx
+
+# OS
+Thumbs.db
+.DS_Store

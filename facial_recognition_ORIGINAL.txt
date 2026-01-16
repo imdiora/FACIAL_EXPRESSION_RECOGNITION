@@ -1,0 +1,100 @@
+import os
+import sys
+sys.path.append(r'C:\Users\HP Envy\Desktop\DDAMFN\networks')  # Correct file path
+import torch
+import cv2
+from torchvision import transforms
+from PIL import Image
+# Ensure that your DDAMNet model includes CoordAtt and other components
+# Import necessary modules
+from DDAM import DDAMNet, CoordAttHead, CoordAtt  # Ensure CoordAtt is available
+
+# Define the model with the exact architecture
+model = DDAMNet(pretrained=False, num_head=3, num_class=7)
+
+# Load the state dictionary from the checkpoint
+model_path = r"C:\Users\HP Envy\Desktop\DDAMFN\checkpoints\rafdb_epoch22_acc0.9055_bacc0.8423.pth"
+# For PyTorch 2.1 and above
+checkpoint = torch.load(model_path, map_location=torch.device('cpu'), weights_only=True)
+state_dict = checkpoint.get('model_state_dict', checkpoint)
+
+# Remove 'module.' prefix if it exists
+from collections import OrderedDict
+
+new_state_dict = OrderedDict()
+for k, v in state_dict.items():
+    new_key = k.replace('module.', '')  # Remove 'module.' if it exists
+    new_state_dict[new_key] = v
+
+# Load the state_dict into the model
+model.load_state_dict(new_state_dict, strict = False)
+
+model.eval()
+
+# Define image preprocessing transformations
+preprocess = transforms.Compose([
+    transforms.Resize((224, 224)),  # Adjust based on your model's input size
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.5], std=[0.5])
+])
+
+# Initialize face detection (Haar Cascade)
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+# Open the video file
+video_path = r"C:\Users\HP Envy\Desktop\DDAMFN\one_person.mp4" # Replace with your video file
+cap = cv2.VideoCapture(video_path)
+
+# Get video properties
+frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+fps = int(cap.get(cv2.CAP_PROP_FPS))
+
+# Output video writer
+output_path = "output_video.avi"
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
+
+print("Processing video...")
+
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    # Convert the frame to grayscale for face detection
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5)
+
+    for (x, y, w, h) in faces:
+        # Extract the face region
+        face = frame[y:y+h, x:x+w]
+
+        # Preprocess the face image
+        face_image = Image.fromarray(cv2.cvtColor(face, cv2.COLOR_BGR2RGB))
+        #face_image = face_image.resize((112, 112), Image.BILINEAR)
+        face_tensor = preprocess(face_image).unsqueeze(0)
+
+        # Run the model prediction
+        with torch.no_grad():
+            # Ensure face_tensor is of the correct type
+            prediction, _, _ = model(face_tensor)
+
+        # Get the label (you can modify this based on your model's output format)
+        predicted_class = torch.argmax(prediction, dim=1).item()
+        confidence = torch.softmax(prediction, dim=1)[0, predicted_class].item()
+        label = f"Class: {predicted_class}, Confidence: {confidence:.2f}"
+
+        # Draw the bounding box and label on the frame
+        cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+        cv2.putText(frame, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+    # Write the processed frame to the output video
+    out.write(frame)
+
+# Release resources
+cap.release()
+out.release()
+cv2.destroyAllWindows()
+
+print(f"Processing complete. Output saved to {output_path}")
