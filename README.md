@@ -21,6 +21,14 @@ Datasets and pretrained models are hosted externally.
 - Clean and reproducible project structure
 
 ---
+## Demo
+
+### Real-time demo (GIF)
+![DDAMFN Demo](demo.gif)
+
+### Sample output
+![DDAMFN Output](demo.png)
+
 
 ## 🧠 Model Architecture
 DDAMFN integrates:
