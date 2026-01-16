@@ -2,41 +2,40 @@
 # Facial Expression Recognition with DDAMFN  
 **Dual Dynamic Attention Mixed Feature Network**
 
-## 📌 Overview
-This repository contains the implementation of **DDAMFN (Dual Dynamic Attention Mixed Feature Network)** for **Facial Expression Recognition (FER)** using PyTorch.
-
-The project explores how **attention mechanisms and mixed feature representations** can improve emotion recognition accuracy from facial images.  
-It supports both **offline inference** and **real-time webcam-based emotion detection**.
-
-This repository contains **code only**.  
-Datasets and pretrained models are hosted externally.
+A PyTorch-based project for **facial emotion recognition**, combining **mixed feature representations** with **attention mechanisms** and supporting **real-time webcam inference**.
 
 ---
 
-## 🎯 Key Features
-- Custom attention-based CNN architecture (DDAMFN)
-- Modular PyTorch implementation
-- Support for standard FER datasets (RAF-DB, FER+)
-- Real-time facial expression recognition via webcam
-- Clean and reproducible project structure
+## ✨ Highlights
+- Custom attention-based CNN (**DDAMFN**)
+- Clean, modular PyTorch code
+- Real-time facial expression recognition
+- Trained and evaluated on **RAF-DB** and **FER+**
+- Pretrained models hosted on **Hugging Face**
 
 ---
-## Demo
 
-### Real-time demo (GIF)
+## 🎥 Demo
+
+**Video-based**
+
 ![DDAMFN Demo](demo.gif)
 
-### Sample output
-<img src="demo.png" width="400" />
+**Sample prediction**
 
+<p align="left">
+  <img src="demo.png" width="380" />
+</p>
 
-## 🧠 Model Architecture
+---
+
+## 🧠 Model
 DDAMFN integrates:
-- mixed low-level and high-level facial feature extraction
-- dual dynamic attention blocks
-- efficient CNN design suitable for real-time inference
+- mixed low- and high-level facial features  
+- dual dynamic attention blocks  
+- lightweight design suitable for real-time use  
 
-Model components are implemented under the `networks/` directory.
+Core architecture is implemented in `networks/`.
 
 ---
 
@@ -44,83 +43,49 @@ Model components are implemented under the `networks/` directory.
 ```
 
 FACIAL_EXPRESSION_RECOGNITION/
-│
-├── networks/              # Model architecture and attention modules
-├── affectnet/             # Dataset utilities (if applicable)
-├── ferPlus/               # FER+ helpers
-│
+├── networks/              # Model & attention modules
 ├── facial_recognition.py  # Image / video inference
-├── real_time.py           # Real-time webcam demo
-├── merger2.0.py           # Feature / model merging utilities
-│
-├── README.md
+├── real_time.py           # Webcam demo
 ├── requirements.txt
-└── .gitignore
+└── README.md
 
 ````
 
 ---
 
-## 📊 Supported Datasets
-This project is designed to work with commonly used FER datasets:
-- RAF-DB
-- FER+
+## ⚙️ Setup
 
-⚠️ Datasets are **not included** due to license and size constraints.
-
----
-
-## ⚙️ Installation
-
-### 1️⃣ Clone the repository
 ```bash
 git clone https://github.com/imdiora/FACIAL_EXPRESSION_RECOGNITION.git
 cd FACIAL_EXPRESSION_RECOGNITION
-````
-
-### 2️⃣ Create a virtual environment
-
-```bash
-python -m venv venv
-source venv/bin/activate      # macOS / Linux
-venv\Scripts\activate         # Windows
-```
-
-### 3️⃣ Install dependencies
-
-```bash
 pip install -r requirements.txt
-```
+````
 
 ---
 
 ## ▶️ Usage
 
-### 🔹 Run inference on images / video
-
-```bash
-python facial_recognition.py
-```
-
-### 🔹 Run real-time webcam demo
+Run real-time demo:
 
 ```bash
 python real_time.py
+```
+
+Run inference on images / video:
+
+```bash
+python facial_recognition.py
 ```
 
 ---
 
 ## 📦 Pretrained Models
 
-Pretrained DDAMFN weights are hosted on **Hugging Face**:
+Pretrained DDAMFN weights are available on **Hugging Face**:
 
-👉 [https://huggingface.co/YOUR_USERNAME/ddamfn-facial-expression-recognition](https://huggingface.co/YOUR_USERNAME/ddamfn-facial-expression-recognition)
+👉 [https://huggingface.co/imdiora/ddamfn-facial-expression-recognition](https://huggingface.co/imdiora/ddamfn-facial-expression-recognition)
 
-### Usage
-
-1. Download the pretrained model file
-2. Create a folder named `pretrained/`
-3. Place the model file inside it
+After downloading:
 
 ```
 pretrained/
@@ -129,53 +94,28 @@ pretrained/
 
 ---
 
-## 🧪 Training
-
-Training scripts and dataset loaders are included for experimentation and fine-tuning.
-Ensure dataset paths are configured correctly before training.
-
----
-
 ## 🚀 Applications
 
 * Facial emotion recognition
 * Human–computer interaction
 * Affective computing
-* Emotion-aware real-time systems
+* Emotion-aware systems
 
 ---
 
 ## 🛠️ Tech Stack
 
-* Python
-* PyTorch
-* OpenCV
-* NumPy
-* Deep Learning & Attention Models
-
----
-
-## 📌 Notes
-
-* Large files (datasets, checkpoints, environments) are intentionally excluded
-* Designed for research, experimentation, and portfolio use
-* Follows industry-standard ML project structuring
-
----
-
-## 📄 License
-
-This project is intended for **educational and research purposes**.
-Please verify dataset licenses before any commercial use.
+Python · PyTorch · OpenCV · NumPy
 
 ---
 
 ## 👩‍💻 Author
 
 **Diyora Bobokulova**
-Computer Engineering | AI Automation & Computer Vision
+AI Automation & Computer Vision
 
 GitHub: [https://github.com/imdiora](https://github.com/imdiora)
-Hugging Face: [https://huggingface.co/imdiora/ddamfn-facial-expression-recognition](https://huggingface.co/imdiora/ddamfn-facial-expression-recognition)
+Hugging Face: [https://huggingface.co/imdiora](https://huggingface.co/imdiora)
 
-Thanks to [Jamshid Ganiev](https://github.com/Jamshid-Ganiev) for major help with backend logic and debugging.
+**Acknowledgement:**
+Thanks to **Jamshid Ganiev** for major support with backend logic and debugging.
